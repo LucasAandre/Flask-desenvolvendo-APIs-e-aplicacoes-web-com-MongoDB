@@ -1,0 +1,18 @@
+<!-- 
+    Define o conteúdo HTML que será enviado ao navegador
+    O prefixo "b" indica que isso é um objeto do tipo bytes
+    Em WSGI, a resposta precisa ser enviada em bytes, não em string 
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stylesync</title>
+</head>
+<body>
+    <ol>
+        {{PRODUTOS}}
+    </ol>
+</body>
+</html>
