@@ -15,6 +15,12 @@ from pydantic import ValidationError
 # Exceção lançada pelo Pydantic quando os dados recebidos não
 # correspondem ao modelo definido (campos faltando, tipos errados, etc.)
 
+# Importa a referência global do banco de dados (MongoDB) definida no pacote app
+from app import db
+
+# Importa a classe ObjectId, usada para manipular e consultar IDs do MongoDB
+from bson import ObjectId
+
 main_bp = Blueprint('main_bp', __name__)
 # Cria um Blueprint chamado 'main_bp'
 # Ele será registrado no app principal para agrupar rotas relacionadas
@@ -69,9 +75,25 @@ def login():
         return jsonify({'message': 'Credenciais inválidas'})
 
 # RF: O sistema deve permitir a listagem de todos os produtos
+# Define a rota /products, acessível via método HTTP GET
 @main_bp.route('/products', methods=['GET'])
 def get_products():
-    return jsonify({'message': 'Esta é a rota de listagem dos produtos'})
+    # Executa uma busca no MongoDB retornando todos os documentos da coleção products
+    products_cursor = db.products.find({})
+
+    # Lista que armazenará os produtos já tratados
+    products_list = []
+
+    # Itera sobre cada documento retornado pelo cursor do MongoDB
+    for product in products_cursor:
+        # Converte o ObjectId do MongoDB para string para permitir serialização em JSON
+        product['_id'] = str(product['_id'])
+
+        # Adiciona o produto tratado à lista
+        products_list.append(product)
+
+    # Retorna a lista de produtos no formato JSON como resposta da API
+    return jsonify(products_list)
 
 # RF: O sistema deve permitir a criação de um novo produto
 @main_bp.route('/products', methods=['POST'])
@@ -79,9 +101,30 @@ def create_product():
     return jsonify({'message': 'Esta é a rota de criação de produto'})
 
 # RF: O sistema deve permitir a visualização dos detalhes de um único produto
-@main_bp.route('/product/<int:product_id>', methods=['GET'])
+# Define a rota para buscar um produto específico pelo ID, usando o método HTTP GET
+@main_bp.route('/product/<string:product_id>', methods=['GET'])
 def get_product_by_id(product_id):
-    return jsonify({'message': f'Esta é a rota de visualização dos detalhes de um produto: ID {product_id}'})
+    try:
+        # Tenta converter o ID recebido na URL (string) para um ObjectId do MongoDB
+        oid = ObjectId(product_id)
+
+    except Exception as e:
+        # Caso a conversão falhe, retorna uma mensagem de erro informando o problema
+        return jsonify({'error': f'Erro ao transformar o {product_id} em ObjectID - Erro {e}'})
+    
+    # Busca um único documento na coleção products usando o ObjectId convertido
+    product = db.products.find_one({'_id': oid})
+
+    if product:
+        # Converte o ObjectId para string para permitir a serialização em JSON
+        product['_id'] = str(product['_id'])
+
+        # Retorna o produto encontrado em formato JSON
+        return jsonify(product)
+    
+    else:
+        # Caso nenhum produto seja encontrado, retorna uma mensagem de erro
+        return jsonify({'error': f'Produto não encontrado: ID {product_id}'})
 
 # RF: O sistema deve permitir a atualização de um único produto e produto existente
 @main_bp.route('/product/<int:product_id>', methods=['PUT'])
@@ -98,11 +141,11 @@ def delete_product(product_id):
 def upload_sales():
     return jsonify({'message': 'Esta é a rota de upload do arquivo de vendas'})
 
-@main_bp.route('/category', methods='GET')
+@main_bp.route('/category', methods=['GET'])
 def get_categories():
     return jsonify({"message": "Retorna a lista de todas as categorias"}) 
 
-@main_bp.route('/category', methods='POST')
+@main_bp.route('/category', methods=['POST'])
 def create_categories():
     return jsonify({"message": "Cria uma categoria"})
 
